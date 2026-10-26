@@ -8,6 +8,10 @@ ThunderKittens, HELM, OGB, and about 2,300 more. Filter to labs, courses or club
 language, see what was created in the last year or pushed most recently, and click any
 group to see everything it has published.
 
+**Good first issues** lists the open issues labelled *good first issue* or *help wanted*
+across all of those repos: unassigned, newest first, and by default only in repos someone
+has pushed to in the last six months, so there is a maintainer around to review the PR.
+
 ## Which groups count
 
 GitHub's organisation search for "stanford" finds about 850 orgs. An org is kept if its

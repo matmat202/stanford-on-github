@@ -3,7 +3,11 @@
  *   [full_name, description, stars, forks, language, created, pushed, archived, topics, org]
  */
 export const R = { NAME: 0, DESC: 1, STARS: 2, FORKS: 3, LANG: 4, CREATED: 5, PUSHED: 6, ARCHIVED: 7, TOPICS: 8, ORG: 9 };
+// An open first issue, as build.py writes it (unassigned, in a listed, unarchived repo):
+//   [repo full_name, number, title, labels, created, updated, comments]
+export const I = { REPO: 0, NUM: 1, TITLE: 2, LABELS: 3, CREATED: 4, UPDATED: 5, COMMENTS: 6 };
 export const KINDS = ['', 'lab', 'course', 'club'];
+export const VIEWS = ['repos', 'issues'];
 export const SORTS = ['stars', 'new', 'active'];
 
 export const fold = (s) => String(s ?? '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
@@ -35,6 +39,34 @@ export function sortRepos(list, sort = 'stars') {
   return out.sort((a, b) => b[R.STARS] - a[R.STARS] || byName(a, b));
 }
 
+// A repo is "quiet" when nobody has pushed to it in the 183 days before the snapshot:
+// an issue there is open, but nobody may be around to review the pull request.
+export const isQuiet = (repo, fetched) => !repo || !repo[R.PUSHED] || t(fetched) - t(repo[R.PUSHED]) > 183 * DAY;
+
+// repoBy maps full_name -> repo row, so the repo-level filters (kind, language, org) and
+// the search over the repo's own description apply to its issues too.
+export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', org = '', q = '', quiet = false, fetched } = {}) {
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  return issues.filter((i) => {
+    const r = repoBy.get(i[I.REPO]);
+    if (!r) return false;
+    if (!quiet && isQuiet(r, fetched)) return false;
+    if (kind && orgKind.get(r[R.ORG]) !== kind) return false;
+    if (lang && r[R.LANG] !== lang) return false;
+    if (org && r[R.ORG] !== org) return false;
+    if (!words.length) return true;
+    const hay = fold(`${i[I.TITLE]} ${i[I.LABELS].join(' ')} ${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]}`);
+    return words.every((w) => hay.includes(w));
+  });
+}
+
+// Most recently updated first; ties by repo name, then newest issue number.
+export function sortIssues(list) {
+  return [...list].sort((a, b) => (a[I.UPDATED] < b[I.UPDATED] ? 1 : a[I.UPDATED] > b[I.UPDATED] ? -1 : 0)
+    || (a[I.REPO].toLowerCase() < b[I.REPO].toLowerCase() ? -1 : a[I.REPO].toLowerCase() > b[I.REPO].toLowerCase() ? 1 : 0)
+    || b[I.NUM] - a[I.NUM]);
+}
+
 export function fmtStars(n) {
   if (n >= 10000) return `${(n / 1000).toFixed(0)}k`;
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
@@ -55,10 +87,11 @@ export function ago(iso, fetched) {
 
 export function encodeState(s) {
   const p = new URLSearchParams();
-  for (const [k, def] of [['kind', ''], ['lang', ''], ['org', ''], ['q', ''], ['sort', 'stars']]) {
+  for (const [k, def] of [['view', 'repos'], ['kind', ''], ['lang', ''], ['org', ''], ['q', ''], ['sort', 'stars']]) {
     const v = (s[k] || '').trim();
     if (v && v !== def) p.set(k, v);
   }
+  if (s.quiet) p.set('quiet', '1');
   const out = p.toString();
   return out ? `?${out}` : '';
 }
@@ -66,6 +99,8 @@ export function decodeState(search, { langs, orgs }) {
   const p = new URLSearchParams(search || '');
   const pick = (k, ok) => { const v = p.get(k) || ''; return ok(v) ? v : ''; };
   return {
+    view: pick('view', (v) => VIEWS.includes(v)) || 'repos',
+    quiet: p.get('quiet') === '1',
     kind: pick('kind', (v) => KINDS.includes(v)),
     lang: pick('lang', (v) => langs.has(v)),
     org: pick('org', (v) => orgs.has(v)),
