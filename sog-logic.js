@@ -80,9 +80,12 @@ export function ago(iso, fetched) {
   if (d <= 0) return 'today';
   if (d === 1) return 'yesterday';
   if (d < 45) return `${d} days ago`;
+  // 45 days rounds to one month and 533-547 days to one year: "1 months ago" read on 20
+  // shipped rows until 2026-10-27.
   const m = Math.round(d / 30.44);
-  if (m < 18) return `${m} months ago`;
-  return `${Math.round(d / 365.25)} years ago`;
+  if (m < 18) return m === 1 ? '1 month ago' : `${m} months ago`;
+  const y = Math.round(d / 365.25);
+  return y === 1 ? '1 year ago' : `${y} years ago`;
 }
 
 export function encodeState(s) {

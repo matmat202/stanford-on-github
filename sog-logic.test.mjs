@@ -32,12 +32,23 @@ ok('new is relative to the snapshot, not to today', L.isNew(mk('x', 1, '', '2026
 ok('exactly 365 days is still new', L.isNew(mk('x', 1, '', '2025-10-26', '', 'a'), F));
 ok('366 days is not', !L.isNew(mk('x', 1, '', '2025-10-25', '', 'a'), F));
 ok('created after the snapshot is not new', !L.isNew(mk('x', 1, '', '2026-11-01', '', 'a'), F));
+ok('created on the snapshot day is new', L.isNew(mk('x', 1, '', F, '', 'a'), F));
+{ // Same push day: stars decide, then the name — and the three keys disagree, so each is tested.
+  const tie = [mk('a/low', 5, '', '', '2026-10-01', 'a'), mk('c/hi', 9, '', '', '2026-10-01', 'c'), mk('b/hi', 9, '', '', '2026-10-01', 'b'), mk('z/new', 1, '', '', '2026-10-02', 'z')];
+  eq('active: same day, more stars first, then by name', names(L.sortRepos(tie, 'active')), ['z/new', 'b/hi', 'c/hi', 'a/low']);
+}
 eq('search name+desc+topics', names(L.filterRepos(repos, kinds, { q: 'nlp', fetched: F })), ['b/glove']);
 eq('search accent-blind', names(L.filterRepos(repos, kinds, { q: 'cafe', fetched: F })), ['a/zeta']);
 eq('every word must match', names(L.filterRepos(repos, kinds, { q: 'python lectures', fetched: F })), ['c/cs336']);
 eq('filters combine', names(L.filterRepos(repos, kinds, { kind: 'lab', lang: 'Python', q: 'prompting', fetched: F })), ['a/dspy']);
 eq('fmt stars', [5, 999, 1000, 1250, 9999, 38797].map(L.fmtStars), ['5', '999', '1k', '1.3k', '10k', '39k']);
 eq('ago', ['2026-10-26', '2026-10-25', '2026-10-01', '2026-04-26', '2024-10-26'].map((d) => L.ago(d, F)), ['today', 'yesterday', '25 days ago', '6 months ago', '2 years ago']);
+// 45 days is the first that is not "days", and rounds to one month; 533 days rounds to a year.
+const daysBefore = (n) => new Date(Date.parse(F + 'T00:00:00Z') - n * 86400e3).toISOString().slice(0, 10);
+eq('ago at its edges, and one is singular', [44, 45, 46, 532, 533, 547, 548].map((n) => L.ago(daysBefore(n), F)),
+  ['44 days ago', '1 month ago', '2 months ago', '17 months ago', '1 year ago', '1 year ago', '2 years ago']);
+eq('a search is cut at 80', L.decodeState('?q=' + 'x'.repeat(90), { langs: new Set(), orgs: new Set() }).q.length, 80);
+eq('stars at the 10k edge', [L.fmtStars(9999), L.fmtStars(10000), L.fmtStars(10500), L.fmtStars(1000), L.fmtStars(999)], ['10k', '10k', '11k', '1k', '999']);
 
 // --- open first issues ---------------------------------------------------------------
 // pushed dates: a/dspy 2026-10-20 (active), b/glove 2024-01-01 (quiet), c/cs336 2026-06-01
@@ -54,6 +65,12 @@ const keys = (l) => l.map((i) => `${i[0]}#${i[1]}`);
 ok('quiet = no push in 183 days before the snapshot', !L.isQuiet(repoBy.get('c/cs336'), F) && L.isQuiet(repoBy.get('b/glove'), F));
 ok('183 days is not quiet, 184 is', !L.isQuiet(mk('x', 1, '', '', '2026-04-26', 'a'), F) && L.isQuiet(mk('x', 1, '', '', '2026-04-25', 'a'), F));
 ok('quiet is relative to the snapshot', !L.isQuiet(repoBy.get('a/dspy'), '2026-11-01') && L.isQuiet(repoBy.get('a/dspy'), '2027-06-01'));
+ok('a repo with no push date is quiet', L.isQuiet(mk('x', 1, '', '', '', 'a'), F) && L.isQuiet(undefined, F));
+eq('issues: the language filter applies', keys(L.filterIssues(iss, repoBy, kinds, { lang: 'C', quiet: true, fetched: F })), ['b/glove#2']);
+{ // Same update day across repos whose name order disagrees with their number order.
+  const tied = [['a/x', 1, 't', [], '2026-01-01', '2026-10-01', 0], ['B/y', 9, 't', [], '2026-01-01', '2026-10-01', 0], ['a/x', 3, 't', [], '2026-01-01', '2026-10-01', 0], ['c/z', 2, 't', [], '2026-01-01', '2026-10-02', 0]];
+  eq('issues: same day, by repo (any case), then newest number', keys(L.sortIssues(tied)), ['c/z#2', 'a/x#3', 'a/x#1', 'B/y#9']);
+}
 eq('issues: newest update first, ties by repo then newest number, quiet repos and unlisted repos hidden',
   keys(L.sortIssues(L.filterIssues(iss, repoBy, kinds, { fetched: F }))), ['a/dspy#12', 'a/dspy#10', 'c/cs336#4']);
 eq('issues: quiet repos included on request', keys(L.sortIssues(L.filterIssues(iss, repoBy, kinds, { quiet: true, fetched: F }))),
@@ -104,6 +121,15 @@ ok('there are open first issues', D.issues.length > 50, D.issues.length);
 ok('the default issue view is not empty', L.filterIssues(D.issues, shownBy, orgKind, { fetched: D.issues_fetched }).length > 20);
 ok('every issue is in a listed, unarchived repo', D.issues.every((i) => shownBy.has(i[0]) && !shownBy.get(i[0])[7]));
 ok('issues ship newest update first', D.issues.every((i, k) => k === 0 || D.issues[k - 1][5] >= i[5]));
+// Every adjacent pair of the whole shipped list, sorted, must be in the documented order:
+// a comparator that skips a tiebreak can still pass a four-row fixture by luck of the sort.
+const ordered = (l, keyFns) => l.every((x, k) => { if (!k) return true; for (const f of keyFns) { const c = f(l[k - 1], x); if (c) return c < 0; } return true; });
+const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+ok('shipped: active is pushed, then stars, then name, pair by pair', ordered(L.sortRepos(D.repos, 'active'),
+  [(a, b) => cmp(b[L.R.PUSHED], a[L.R.PUSHED]), (a, b) => b[L.R.STARS] - a[L.R.STARS], (a, b) => cmp(a[0].toLowerCase(), b[0].toLowerCase())]));
+ok('shipped: stars, then name, pair by pair', ordered(L.sortRepos(D.repos, 'stars'), [(a, b) => b[L.R.STARS] - a[L.R.STARS], (a, b) => cmp(a[0].toLowerCase(), b[0].toLowerCase())]));
+ok('shipped: issues are updated, then repo, then newest number, pair by pair', ordered(L.sortIssues(D.issues),
+  [(a, b) => cmp(b[L.I.UPDATED], a[L.I.UPDATED]), (a, b) => cmp(a[0].toLowerCase(), b[0].toLowerCase()), (a, b) => b[L.I.NUM] - a[L.I.NUM]]));
 ok('issue keys are unique', new Set(D.issues.map((i) => `${i[0]}#${i[1]}`)).size === D.issues.length);
 ok('issue dates are ISO days', D.issues.every((i) => /^\d{4}-\d{2}-\d{2}$/.test(i[4]) && /^\d{4}-\d{2}-\d{2}$/.test(i[5])));
 ok('issue count is what the counts say', D.counts.issues === D.issues.length);
@@ -113,6 +139,25 @@ if (raw) {
   const assigned = new Set(raw.items.filter((i) => i.assignees).map((i) => `${i.repo.toLowerCase()}#${i.number}`));
   ok('the extract has assigned issues to drop (positive control)', assigned.size > 0);
   ok('no assigned issue ships', D.issues.every((i) => !assigned.has(`${i[0].toLowerCase()}#${i[1]}`)));
+  // Read through the page's own column map, each shipped issue says what GitHub said.
+  const byKey = new Map(raw.items.map((i) => [`${i.repo}#${i.number}`, i]));
+  const off = D.issues.filter((i) => { const g = byKey.get(`${i[L.I.REPO]}#${i[L.I.NUM]}`);
+    // build.py trims titles and keeps four labels; the rest it passes through as GitHub wrote it.
+    return !g || g.title.trim() !== i[L.I.TITLE] || !i[L.I.LABELS].every((x, k) => g.labels[k] === x) || g.created_at.slice(0, 10) !== i[L.I.CREATED]
+      || g.updated_at.slice(0, 10) !== i[L.I.UPDATED] || g.comments !== i[L.I.COMMENTS]; });
+  eq('every issue row matches GitHub\'s, column for column', off.map((i) => `${i[0]}#${i[1]}`).slice(0, 5), []);
+}
+let gh = null;
+try { gh = JSON.parse(readFileSync(here + '../data/github.raw.json', 'utf8')); } catch { /* staged copy: no extract */ }
+if (gh) {
+  // The same for repos, against GitHub's API records (fetch.py, data/github.raw.json).
+  const byName = new Map(gh.repos.map((r) => [r.full_name, r]));
+  const off = D.repos.filter((r) => { const g = byName.get(r[L.R.NAME]);
+    return !g || g.stargazers_count !== r[L.R.STARS] || g.forks_count !== r[L.R.FORKS] || (g.language || '') !== (r[L.R.LANG] || '')
+      || g.created_at.slice(0, 10) !== r[L.R.CREATED] || g.pushed_at.slice(0, 10) !== r[L.R.PUSHED] || !!g.archived !== !!r[L.R.ARCHIVED]
+      // topics are cut to four, descriptions shortened, orgs canonically cased by build.py
+      || !r[L.R.TOPICS].every((x, k) => g.topics[k] === x) || g.org.toLowerCase() !== r[L.R.ORG].toLowerCase(); });
+  eq('every repo row matches GitHub\'s, column for column', off.map((r) => r[0]).slice(0, 5), []);
 }
 
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);
