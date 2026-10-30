@@ -37,6 +37,11 @@ a{color:var(--accent)}
 .kinds button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:600}
 .controls{display:grid;grid-template-columns:1fr auto auto;gap:8px}
 @media (max-width:600px){.controls{grid-template-columns:1fr 1fr}.controls .q{grid-column:1 / -1}}
+/* Below ~380px two columns cannot hold a select's own text at the 16px that stops
+   iOS zooming on tap (input-zoom, 2026-10-30): 'Any language' needed 97px in a 95px
+   box, and 'Jupyter Notebook' -- a real option here -- needs about 130px. Font-size
+   is not available as the give, so the columns are. */
+@media (max-width:380px){.controls{grid-template-columns:1fr}}
 input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);min-width:0;width:100%}
 label.v{position:absolute;left:-9999px}
 .statusrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 2px}
