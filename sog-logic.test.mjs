@@ -47,6 +47,15 @@ eq('ago', ['2026-10-26', '2026-10-25', '2026-10-01', '2026-04-26', '2024-10-26']
 const daysBefore = (n) => new Date(Date.parse(F + 'T00:00:00Z') - n * 86400e3).toISOString().slice(0, 10);
 eq('ago at its edges, and one is singular', [44, 45, 46, 532, 533, 547, 548].map((n) => L.ago(daysBefore(n), F)),
   ['44 days ago', '1 month ago', '2 months ago', '17 months ago', '1 year ago', '1 year ago', '2 years ago']);
+// Words a visitor reads are measured to their today, not the snapshot: a push on the fetch
+// day must not still read "today" 17 days later. The snapshot is the floor (a clock set
+// earlier than the fetch, or none, changes nothing).
+eq('ago is measured to the visitor, floored at the snapshot', [
+  L.ago(F, L.asOf(F, '2026-11-12')), L.ago('2026-10-25', L.asOf(F, '2026-11-12')),
+  L.ago('2026-10-25', L.asOf(F, '2026-10-20')), L.ago(F, L.asOf(F, undefined)), L.ago(F, L.asOf(F, F)),
+], ['17 days ago', '18 days ago', 'yesterday', 'today', 'today']);
+eq('stale note from two days on', ['2026-10-26', '2026-10-27', '2026-10-28', '2026-11-12', '2026-10-01', undefined].map((d) => L.staleNote(F, d)),
+  ['', '', 'Data from 2026-10-26, 2 days ago.', 'Data from 2026-10-26, 17 days ago.', '', '']);
 eq('a search is cut at 80', L.decodeState('?q=' + 'x'.repeat(90), { langs: new Set(), orgs: new Set() }).q.length, 80);
 eq('stars at the 10k edge', [L.fmtStars(9999), L.fmtStars(10000), L.fmtStars(10500), L.fmtStars(1000), L.fmtStars(999)], ['10k', '10k', '11k', '1k', '999']);
 
@@ -94,6 +103,17 @@ eq('unknown values fall back', L.decodeState('?kind=evil&lang=Cobol&org=zz&sort=
 // --- the shipped data -------------------------------------------------------------------
 const here = fileURLToPath(new URL('.', import.meta.url));
 const D = JSON.parse(readFileSync(here + 'data/repos.json', 'utf8'));
+{ // The page must route every "ago" through asOf; one call left on the bare snapshot date
+  // brings back "pushed today" on 17-day-old data. The staged copy has app.js beside it too.
+  let app = '';
+  try { app = readFileSync(here + 'app.js', 'utf8'); } catch { /* no app.js: nothing to check */ }
+  if (app) {
+    const calls = [...app.matchAll(/\bago\(([^()]*(?:\([^()]*\))?[^()]*)\)/g)].map((m) => m[1]);
+    ok('app.js calls ago', calls.length >= 3, `found ${calls.length}`);
+    eq('every ago in app.js is measured asOf the visitor', calls.filter((c) => !/,\s*asOf\(/.test(c)), []);
+    ok('app.js shows the stale note', /staleNote\(D\.fetched, TODAY\)/.test(app));
+  }
+}
 const orgKind = new Map(D.orgs.map((o) => [o.login, o.kind]));
 ok('thousands of repos', D.repos.length > 1500, D.repos.length);
 ok('every repo meets the star floor', D.repos.every((r) => r[2] >= D.counts.min_stars));

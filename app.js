@@ -1,4 +1,4 @@
-import { R, I, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, ago, isNew, encodeState, decodeState } from './sog-logic.js';
+import { R, I, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, ago, asOf, staleNote, isNew, encodeState, decodeState } from './sog-logic.js';
 
 const $ = (id) => document.getElementById(id);
 const PAGE = 50;
@@ -8,6 +8,8 @@ let orgKind = new Map();
 let orgName = new Map();
 let repoBy = new Map();
 const state = { view: 'repos', quiet: false, kind: '', lang: '', org: '', q: '', sort: 'stars', shown: PAGE };
+// The visitor's own calendar date, for the words "today" and "N days ago".
+const TODAY = ((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());
 const fmt = (n) => n.toLocaleString('en-US');
 
 function row(r, i) {
@@ -27,7 +29,7 @@ function row(r, i) {
   m.append(s);
   if (r[R.LANG]) { const l = document.createElement('span'); l.textContent = r[R.LANG]; m.append(l); }
   const p = document.createElement('span');
-  p.textContent = state.sort === 'new' ? `created ${ago(r[R.CREATED], D.fetched)}` : `pushed ${ago(r[R.PUSHED], D.fetched)}`;
+  p.textContent = state.sort === 'new' ? `created ${ago(r[R.CREATED], asOf(D.fetched, TODAY))}` : `pushed ${ago(r[R.PUSHED], asOf(D.fetched, TODAY))}`;
   m.append(p);
   if (r[R.ARCHIVED]) { const x = document.createElement('span'); x.className = 'arch'; x.textContent = 'archived'; m.append(x); }
   for (const t of r[R.TOPICS].slice(0, 3)) { const x = document.createElement('span'); x.className = 'tag'; x.textContent = t; m.append(x); }
@@ -61,7 +63,7 @@ function issueRow(i, k) {
   if (r[R.LANG]) { const l = document.createElement('span'); l.textContent = r[R.LANG]; m.append(l); }
   const u = document.createElement('span');
   const c = i[I.COMMENTS];
-  u.textContent = `updated ${ago(i[I.UPDATED], D.issues_fetched)} · ${c ? `${c} ${c === 1 ? 'comment' : 'comments'}` : 'no comments'}`;
+  u.textContent = `updated ${ago(i[I.UPDATED], asOf(D.issues_fetched, TODAY))} · ${c ? `${c} ${c === 1 ? 'comment' : 'comments'}` : 'no comments'}`;
   m.append(u);
   if (isQuiet(r, D.issues_fetched)) { const x = document.createElement('span'); x.className = 'arch'; x.textContent = `repo quiet since ${r[R.PUSHED].slice(0, 7)}`; m.append(x); }
   for (const t of i[I.LABELS].slice(0, 3)) { const x = document.createElement('span'); x.className = 'tag'; x.textContent = t; m.append(x); }
@@ -153,7 +155,8 @@ async function main() {
   for (const b of document.querySelectorAll('#views button')) b.addEventListener('click', () => set({ view: b.dataset.v }));
   const newCount = D.repos.filter((r) => isNew(r, D.fetched)).length;
   $('sub').textContent = `${fmt(D.repos.length)} public repos from ${fmt(D.orgs.length)} Stanford labs, courses and student groups ` +
-    `on GitHub, ranked by stars. ${fmt(newCount)} were created in the last year.`;
+    `on GitHub, ranked by stars. ${fmt(newCount)} were created in the last year.` +
+    (staleNote(D.fetched, TODAY) ? ` ${staleNote(D.fetched, TODAY)}` : '');
   $('fetched').textContent = D.fetched;
   const ul = $('kinds');
   for (const k of ['', 'lab', 'course', 'club']) {

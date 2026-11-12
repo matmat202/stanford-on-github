@@ -73,7 +73,18 @@ export function fmtStars(n) {
   return String(n);
 }
 
-// "today", "3 days ago", "5 months ago", "2 years ago", relative to the snapshot date.
+// The date "ago" is measured to: the visitor's today, never earlier than the snapshot.
+// Measured to the snapshot alone, a push on the fetch day read "pushed today" for as long
+// as the data went unrefreshed (on 2026-11-12, CoreNLP's 10-26 push). The filters keep the
+// snapshot as their clock (isNew, isQuiet); only the words a visitor reads move.
+export const asOf = (fetched, today) => (today && t(today) > t(fetched) ? today : fetched);
+// "Data from 2026-10-26, 17 days ago." once the snapshot is two or more days old, else ''.
+export function staleNote(fetched, today) {
+  const d = Math.round((t(asOf(fetched, today)) - t(fetched)) / DAY);
+  return d >= 2 ? `Data from ${fetched}, ${ago(fetched, today)}.` : '';
+}
+
+// "today", "3 days ago", "5 months ago", "2 years ago", relative to `fetched` (pass asOf).
 export function ago(iso, fetched) {
   if (!iso) return '';
   const d = Math.round((t(fetched) - t(iso)) / DAY);
