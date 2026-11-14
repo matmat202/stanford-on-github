@@ -40,6 +40,17 @@ ok('created on the snapshot day is new', L.isNew(mk('x', 1, '', F, '', 'a'), F))
 eq('search name+desc+topics', names(L.filterRepos(repos, kinds, { q: 'nlp', fetched: F })), ['b/glove']);
 eq('search accent-blind', names(L.filterRepos(repos, kinds, { q: 'cafe', fetched: F })), ['a/zeta']);
 eq('every word must match', names(L.filterRepos(repos, kinds, { q: 'python lectures', fetched: F })), ['c/cs336']);
+{ // Plurals: the stem is a prefix of both forms, so the singular and the plural both match.
+  const pl = [mk('a/bot', 9, 'Python', '', '', 'a', 'A robot arm'), mk('a/lib', 8, 'C', '', '', 'a', 'Shared library'),
+    mk('a/llm', 7, 'Python', '', '', 'a', 'Small LLMs'), mk('a/cls', 6, 'Java', '', '', 'a', 'Class corpus analysis')];
+  eq('plural finds the singular', names(L.filterRepos(pl, kinds, { q: 'robots', fetched: F })), ['a/bot']);
+  eq('-ies plural finds -y', names(L.filterRepos(pl, kinds, { q: 'libraries', fetched: F })), ['a/lib']);
+  eq('singular still finds the plural', names(L.filterRepos(pl, kinds, { q: 'llm', fetched: F })), ['a/llm']);
+  eq('-ss/-us/-is are not plurals', ['class', 'corpus', 'analysis', 'bus', 'robots'].map(L.stem), ['class', 'corpus', 'analysis', 'bus', 'robot']);
+  eq('words the cut would change stay whole', ['news', 'series', 'species'].map(L.stem), ['news', 'series', 'species']);
+  const isr = new Map([['a/bot', mk('a/bot', 9, '', '', '2026-10-20', 'a', 'A robot arm')]]);
+  eq('issues search takes plurals too', L.filterIssues([['a/bot', 1, 'Fix arm', [], '', '2026-10-20', 0]], isr, kinds, { q: 'robots', fetched: F }).map((i) => i[0]), ['a/bot']);
+}
 eq('filters combine', names(L.filterRepos(repos, kinds, { kind: 'lab', lang: 'Python', q: 'prompting', fetched: F })), ['a/dspy']);
 eq('fmt stars', [5, 999, 1000, 1250, 9999, 38797].map(L.fmtStars), ['5', '999', '1k', '1.3k', '10k', '39k']);
 eq('ago', ['2026-10-26', '2026-10-25', '2026-10-01', '2026-04-26', '2024-10-26'].map((d) => L.ago(d, F)), ['today', 'yesterday', '25 days ago', '6 months ago', '2 years ago']);

@@ -18,8 +18,22 @@ const t = (iso) => Date.parse(`${iso}T00:00:00Z`);
 // or the page would quietly empty itself as the snapshot ages.
 export const isNew = (repo, fetched) => !!repo[R.CREATED] && t(fetched) - t(repo[R.CREATED]) <= 365 * DAY && t(repo[R.CREATED]) <= t(fetched);
 
+// A search word in the plural also finds the singular: "robots" read 7 repos where "robot"
+// read 69, "llms" 16 where "llm" read 61 (shipped data, 2026-11-13). The word is cut to a
+// stem that both forms start with ("libraries" -> "librar"); -ss, -us and -is endings are
+// not plurals ("class", "corpus", "analysis") and are left whole, as are the words in
+// WHOLE, where the cut would change the meaning ("news" -> "new" matched 30 repos).
+const WHOLE = new Set(['news', 'series', 'species', 'lens', 'gas', 'yes']);
+export function stem(w) {
+  if (WHOLE.has(w)) return w;
+  if (w.length > 4 && w.endsWith('ies')) return w.slice(0, -3);
+  if (w.length >= 4 && w.endsWith('s') && !/(ss|us|is)$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+const terms = (q) => fold(q).split(/\s+/).filter(Boolean).map(stem);
+
 export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q = '', sort = 'stars', fetched } = {}) {
-  const words = fold(q).split(/\s+/).filter(Boolean);
+  const words = terms(q);
   return repos.filter((r) => {
     if (kind && orgKind.get(r[R.ORG]) !== kind) return false;
     if (lang && r[R.LANG] !== lang) return false;
@@ -46,7 +60,7 @@ export const isQuiet = (repo, fetched) => !repo || !repo[R.PUSHED] || t(fetched)
 // repoBy maps full_name -> repo row, so the repo-level filters (kind, language, org) and
 // the search over the repo's own description apply to its issues too.
 export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', org = '', q = '', quiet = false, fetched } = {}) {
-  const words = fold(q).split(/\s+/).filter(Boolean);
+  const words = terms(q);
   return issues.filter((i) => {
     const r = repoBy.get(i[I.REPO]);
     if (!r) return false;
