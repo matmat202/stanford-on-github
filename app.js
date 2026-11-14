@@ -1,4 +1,4 @@
-import { R, I, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, ago, asOf, staleNote, isNew, encodeState, decodeState } from './sog-logic.js';
+import { R, I, topicQuery, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, ago, asOf, staleNote, isNew, encodeState, decodeState } from './sog-logic.js';
 
 const $ = (id) => document.getElementById(id);
 const PAGE = 50;
@@ -32,7 +32,11 @@ function row(r, i) {
   p.textContent = state.sort === 'new' ? `created ${ago(r[R.CREATED], asOf(D.fetched, TODAY))}` : `pushed ${ago(r[R.PUSHED], asOf(D.fetched, TODAY))}`;
   m.append(p);
   if (r[R.ARCHIVED]) { const x = document.createElement('span'); x.className = 'arch'; x.textContent = 'archived'; m.append(x); }
-  for (const t of r[R.TOPICS].slice(0, 3)) { const x = document.createElement('span'); x.className = 'tag'; x.textContent = t; m.append(x); }
+  for (const t of r[R.TOPICS].slice(0, 3)) {
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'tag'; x.dataset.q = topicQuery(t); x.textContent = t;
+    x.title = `Search for ${topicQuery(t)}`;
+    m.append(x);
+  }
   if (state.org !== r[R.ORG]) m.append(orgButton(r[R.ORG]));
   body.append(m);
   li.append(rk, body);
@@ -178,6 +182,8 @@ async function main() {
   document.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-org]');
     if (b) set({ org: b.dataset.org });
+    const tq = e.target.closest('button[data-q]');
+    if (tq) { set({ q: tq.dataset.q }); window.scrollTo({ top: $('kinds').offsetTop - 8 }); }
   });
 }
 

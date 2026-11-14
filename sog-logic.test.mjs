@@ -185,6 +185,16 @@ if (raw) {
       || g.updated_at.slice(0, 10) !== i[L.I.UPDATED] || g.comments !== i[L.I.COMMENTS]; });
   eq('every issue row matches GitHub\'s, column for column', off.map((i) => `${i[0]}#${i[1]}`).slice(0, 5), []);
 }
+// A tapped topic tag searches its words: the tagged repo and the one that only says it.
+{
+  eq('topic query drops hyphens', L.topicQuery('deep-learning'), 'deep learning');
+  const tr = [mk('a/tagged', 50, 'Python', '', '', 'a', 'Models', ['deep-learning']), mk('b/said', 40, 'Python', '', '', 'b', 'A deep learning toolkit'), mk('c/neither', 30, 'Python', '', '', 'c', 'Deep sea learning lab notes')];
+  eq('topic tap finds tagged and described repos', names(L.filterRepos(tr.slice(0, 2), kinds, { q: L.topicQuery('deep-learning'), fetched: F })), ['a/tagged', 'b/said']);
+  eq('topic query is a search, not a filter', names(L.filterRepos(tr, kinds, { q: L.topicQuery('deep-learning'), fetched: F })).length, 3);
+  // Against the shipped data: every shown tag, tapped, finds at least its own repo.
+  const miss = D.repos.filter((r) => r[L.R.TOPICS].slice(0, 3).some((t) => !L.filterRepos([r], kinds, { q: L.topicQuery(t), fetched: D.fetched }).length));
+  eq('every shown tag finds its own repo', miss.map((r) => r[0]).slice(0, 5), []);
+}
 let gh = null;
 try { gh = JSON.parse(readFileSync(here + '../data/github.raw.json', 'utf8')); } catch { /* staged copy: no extract */ }
 if (gh) {

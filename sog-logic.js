@@ -32,6 +32,11 @@ export function stem(w) {
 }
 const terms = (q) => fold(q).split(/\s+/).filter(Boolean).map(stem);
 
+// What tapping a topic tag searches for. Only 465 of 2,400 repos carry topics, so an
+// exact-topic filter would be the narrow answer ('nlp': 12 tagged, 130 by search); the
+// hyphen becomes a space so 'deep-learning' also finds "deep learning" in a description.
+export const topicQuery = (topic) => String(topic ?? '').replace(/[-_]+/g, ' ').trim().slice(0, 80);
+
 // orgName (login -> the group's display name) puts the name each row shows in "all from …"
 // into the search: "intelligent systems" found none of sisl's 171 repos without it.
 export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q = '', sort = 'stars', fetched, orgName } = {}) {
