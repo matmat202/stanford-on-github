@@ -51,6 +51,13 @@ eq('every word must match', names(L.filterRepos(repos, kinds, { q: 'python lectu
   const isr = new Map([['a/bot', mk('a/bot', 9, '', '', '2026-10-20', 'a', 'A robot arm')]]);
   eq('issues search takes plurals too', L.filterIssues([['a/bot', 1, 'Fix arm', [], '', '2026-10-20', 0]], isr, kinds, { q: 'robots', fetched: F }).map((i) => i[0]), ['a/bot']);
 }
+{ // The group's display name is searchable, for repos and for issues.
+  const on = new Map([['a', 'Intelligent Systems Lab'], ['c', 'Convex Group']]);
+  eq('search reaches the org display name', names(L.filterRepos(repos, kinds, { q: 'intelligent systems', fetched: F, orgName: on })), ['a/dspy', 'a/zeta']);
+  eq('org name combines with other words', names(L.filterRepos(repos, kinds, { q: 'convex lectures', fetched: F, orgName: on })), ['c/cs336']);
+  eq('no orgName given, no match', names(L.filterRepos(repos, kinds, { q: 'intelligent', fetched: F })), []);
+  eq('issues search reaches the org name', L.filterIssues([['c/cs336', 2, 'Typo', [], '', '2026-10-20', 0]], new Map([['c/cs336', mk('c/cs336', 4000, 'Python', '', '2026-10-20', 'c')]]), kinds, { q: 'convex', fetched: F, orgName: on }).map((i) => i[0]), ['c/cs336']);
+}
 eq('filters combine', names(L.filterRepos(repos, kinds, { kind: 'lab', lang: 'Python', q: 'prompting', fetched: F })), ['a/dspy']);
 eq('fmt stars', [5, 999, 1000, 1250, 9999, 38797].map(L.fmtStars), ['5', '999', '1k', '1.3k', '10k', '39k']);
 eq('ago', ['2026-10-26', '2026-10-25', '2026-10-01', '2026-04-26', '2024-10-26'].map((d) => L.ago(d, F)), ['today', 'yesterday', '25 days ago', '6 months ago', '2 years ago']);

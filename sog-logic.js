@@ -32,7 +32,9 @@ export function stem(w) {
 }
 const terms = (q) => fold(q).split(/\s+/).filter(Boolean).map(stem);
 
-export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q = '', sort = 'stars', fetched } = {}) {
+// orgName (login -> the group's display name) puts the name each row shows in "all from …"
+// into the search: "intelligent systems" found none of sisl's 171 repos without it.
+export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q = '', sort = 'stars', fetched, orgName } = {}) {
   const words = terms(q);
   return repos.filter((r) => {
     if (kind && orgKind.get(r[R.ORG]) !== kind) return false;
@@ -40,7 +42,7 @@ export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q 
     if (org && r[R.ORG] !== org) return false;
     if (sort === 'new' && !isNew(r, fetched)) return false;
     if (!words.length) return true;
-    const hay = fold(`${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]}`);
+    const hay = fold(`${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]} ${orgName?.get(r[R.ORG]) ?? ''}`);
     return words.every((w) => hay.includes(w));
   });
 }
@@ -59,7 +61,7 @@ export const isQuiet = (repo, fetched) => !repo || !repo[R.PUSHED] || t(fetched)
 
 // repoBy maps full_name -> repo row, so the repo-level filters (kind, language, org) and
 // the search over the repo's own description apply to its issues too.
-export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', org = '', q = '', quiet = false, fetched } = {}) {
+export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', org = '', q = '', quiet = false, fetched, orgName } = {}) {
   const words = terms(q);
   return issues.filter((i) => {
     const r = repoBy.get(i[I.REPO]);
@@ -69,7 +71,7 @@ export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', or
     if (lang && r[R.LANG] !== lang) return false;
     if (org && r[R.ORG] !== org) return false;
     if (!words.length) return true;
-    const hay = fold(`${i[I.TITLE]} ${i[I.LABELS].join(' ')} ${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]}`);
+    const hay = fold(`${i[I.TITLE]} ${i[I.LABELS].join(' ')} ${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]} ${orgName?.get(r[R.ORG]) ?? ''}`);
     return words.every((w) => hay.includes(w));
   });
 }

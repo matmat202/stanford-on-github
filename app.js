@@ -76,8 +76,8 @@ function issueRow(i, k) {
 function draw() {
   const issues = state.view === 'issues';
   const list = issues
-    ? sortIssues(filterIssues(D.issues, repoBy, orgKind, { ...state, fetched: D.issues_fetched }))
-    : sortRepos(filterRepos(D.repos, orgKind, { ...state, fetched: D.fetched }), state.sort);
+    ? sortIssues(filterIssues(D.issues, repoBy, orgKind, { ...state, fetched: D.issues_fetched, orgName }))
+    : sortRepos(filterRepos(D.repos, orgKind, { ...state, fetched: D.fetched, orgName }), state.sort);
   const unit = issues ? ['open issue', 'open issues'] : ['repo', 'repos'];
   const bits = [`${fmt(list.length)} ${list.length === 1 ? unit[0] : unit[1]}`];
   if (issues) { const n = new Set(list.map((i) => i[I.REPO])).size; bits[0] += ` in ${fmt(n)} ${n === 1 ? 'repo' : 'repos'}`; }
