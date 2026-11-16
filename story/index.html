@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Most Code Goes Quiet · what happens to the repos Stanford starts on GitHub</title>
+<meta name="description" content="A scrolling story from GitHub's own records: three in ten repos that Stanford's labs, courses and student groups start are never pushed to again after their first month, and it has been roughly that every year since 2014.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="plot" aria-hidden="true"><div id="axes"></div></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+<p id="err" role="alert"></p>
+<main>
+
+<section class="step" data-kind="field"><div>
+  <p class="kicker">Stanford on GitHub · a story</p>
+  <h1>Most code goes quiet</h1>
+  <p>Stanford's labs, courses and student groups keep <b data-fact="orgs"></b> GitHub
+  organisations with code of their own in them: <b data-fact="n"></b> repositories, not
+  counting forks. Each dot here is one of them. This story follows what happened to them
+  after they were made.</p>
+  <p class="small">Scroll ↓</p>
+</div></section>
+
+<section class="step" data-kind="count"><div>
+  <p class="kicker">How to read it</p>
+  <h2>One column a year</h2>
+  <p>Each column holds the repos created that year, one dot each, so its height is the
+  count: <b data-fact="count:2013"></b> in 2013, <b data-fact="count:2019"></b> in 2019,
+  and <b data-fact="count:2026"></b> so far in <b data-fact="last"></b>. The same dot is
+  the same repo all the way down.</p>
+</div></section>
+
+<section class="step" data-kind="month"><div>
+  <p class="kicker">Chapter 1 · The first month</p>
+  <h2>Three in ten are done in thirty days</h2>
+  <p>GitHub records when anyone last pushed code to a repo. For
+  <b data-fact="month"></b> of the <b data-fact="mature"></b> repos that are at least a year
+  old, that last push came <span class="w month">within 30 days of the repo being
+  made</span>. Nothing has been pushed to them since.</p>
+  <p>It is not a recent habit. In every year from <b data-fact="spanfrom"></b> to
+  <b data-fact="spanto"></b> the share was between <b data-fact="ymin"></b> and
+  <b data-fact="ymax"></b>.</p>
+  <p class="small">The <b data-fact="last"></b> column looks worse because its repos are
+  young: one made last month cannot yet have been pushed to in its second.</p>
+</div></section>
+
+<section class="step" data-kind="bulk"><div>
+  <p class="kicker">Chapter 2 · Is it one big dump?</p>
+  <h2>Not a few migrations</h2>
+  <p>A lab moving its old code to GitHub makes dozens of repos in an afternoon and never
+  touches them again. So fade out every repo whose organisation made five or more that
+  same day: <b data-fact="bulkn"></b> of them. Among the rest, <b data-fact="nobulk"></b>
+  still stop in month one.</p>
+  <p>Leave out the ten organisations with the most repos instead, and it is
+  <b data-fact="nobig"></b>. Give every organisation an equal vote, so a lab with two repos
+  counts as much as one with two hundred, and it is <b data-fact="orgw"></b>: small groups
+  abandon more, not less.</p>
+  <p>Labs, courses and student groups all land between a quarter and two fifths:
+  labs <b data-fact="kind:lab"></b>, courses <b data-fact="kind:course"></b>, student
+  groups <b data-fact="kind:club"></b>.</p>
+</div></section>
+
+<section class="step" data-kind="starred"><div>
+  <p class="kicker">Chapter 3 · Who noticed</p>
+  <h2>The starless ones stop first</h2>
+  <p>A star on GitHub is a bookmark: someone found the repo and wanted it back. Nearly half of these repos
+  never get even one. Gold here is <span class="w star">three stars or more</span>.</p>
+  <p>Of the <b data-fact="zeron"></b> year-old repos with no stars at all,
+  <b data-fact="zero"></b> were done in a month. Of those with three or more,
+  <b data-fact="starred"></b>; of the <b data-fact="fiftyn"></b> with fifty or more,
+  <b data-fact="fifty"></b>.</p>
+  <p class="small">This runs both ways: work that keeps going collects stars, and starred
+  work gets pull requests that keep it going. The record cannot say which came first.</p>
+</div></section>
+
+<section class="step" data-kind="alive"><div>
+  <p class="kicker">Chapter 4 · Still going</p>
+  <h2>One in fifteen is still being worked on</h2>
+  <p>Now count the repos <span class="w alive">pushed to in the six months before
+  <b data-fact="fetched"></b></span>. Of the <b data-fact="oldn"></b> made from
+  <b data-fact="oldfrom"></b> to <b data-fact="oldto"></b>, <b data-fact="oldalive"></b>
+  were. Even of last year's, <b data-fact="yalive:2025"></b>.</p>
+  <p>Quiet need not mean failed. A paper's code can be finished when the paper is, and a
+  course repo when the quarter ends. The record shows only that the pushing stopped.</p>
+</div></section>
+
+<section class="step" data-kind="count"><div>
+  <p class="kicker">Coda · The ones that lasted</p>
+  <h2>Find what is still alive</h2>
+  <p><a href="../">Stanford on GitHub</a> ranks every repo here with three stars or more
+  across all of these organisations, and can sort them by when they were last pushed.</p>
+  <p class="small">From GitHub's API, fetched <b data-fact="fetched"></b>: every public,
+  non-fork repo of each organisation whose profile says Stanford. "Last push" is GitHub's
+  pushed_at, which counts a push to any branch, bots' included, so the share that stopped
+  in month one is if anything an undercount. Private repos, and code kept in personal
+  accounts rather than a group's organisation, are not in it. The first column also holds
+  the three repos from before 2011.</p>
+</div></section>
+
+</main>
+<script type="module" src="story.js"></script>
+</body>
+</html>
