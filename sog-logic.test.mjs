@@ -208,5 +208,39 @@ if (gh) {
   eq('every repo row matches GitHub\'s, column for column', off.map((r) => r[0]).slice(0, 5), []);
 }
 
+// --- stem's two length guards, and topicQuery -----------------------------------------
+// Added 2026-11-19. mutwatch had 9 survivors here, two of them marked DIFFERS (the equiv
+// sweep can tell them apart, so they were real gaps, not equivalents), and named asOf,
+// staleNote and topicQuery as never reached by the sweep at all. The existing cases all
+// used words comfortably inside each guard, so no length boundary was ever exercised.
+
+// kills L29 `w.length > 4` -> `>= 4`: a four-letter -ies word is NOT cut to its stem,
+// it falls through to the plain -s rule ('ties' -> 'tie', never 't')
+eq('stem leaves a four-letter -ies word to the -s rule', L.stem('ties'), 'tie');
+// kills L29 `4 -> 5`, `slice(0, -3)` -> `slice(1, -3)` and -> `slice(0, -4)`
+eq('stem cuts -ies from a five-letter word', L.stem('flies'), 'fl');
+// kills L30 `w.length >= 4` -> `> 4` and `4 -> 5`: four letters is exactly long enough
+eq('stem cuts the -s of a four-letter plural', L.stem('apps'), 'app');
+eq('stem leaves a three-letter -s word whole', L.stem('ops'), 'ops');
+eq('stem leaves the -ss, -us and -is words that only look plural',
+   [L.stem('class'), L.stem('corpus'), L.stem('analysis')], ['class', 'corpus', 'analysis']);
+eq('stem leaves the WHOLE words, where the cut would change the meaning',
+   [L.stem('news'), L.stem('series'), L.stem('lens')], ['news', 'series', 'lens']);
+
+eq('topicQuery turns hyphens and underscores into spaces', L.topicQuery('deep-learning'), 'deep learning');
+// kills L38 `topic ?? ''` -> `topic || ''`: 0 is a topic, not an absent one
+eq('topicQuery keeps a falsy-but-present topic', L.topicQuery(0), '0');
+eq('topicQuery of an absent topic is empty', [L.topicQuery(null), L.topicQuery(undefined)], ['', '']);
+// kills L38 `.slice(0, 80)` -> `.slice(0, 81)`
+eq('topicQuery is capped at 80 characters', L.topicQuery('a'.repeat(100)).length, 80);
+
+eq('asOf moves the clock forward to the visitor’s today', L.asOf('2026-10-26', '2026-11-12'), '2026-11-12');
+eq('asOf never runs earlier than the snapshot', L.asOf('2026-11-12', '2026-10-26'), '2026-11-12');
+eq('asOf with no today is the snapshot', L.asOf('2026-11-12', ''), '2026-11-12');
+eq('staleNote is silent on the snapshot day and the day after',
+   [L.staleNote('2026-11-12', '2026-11-12'), L.staleNote('2026-11-12', '2026-11-13')], ['', '']);
+ok('staleNote speaks once the snapshot is two days old',
+   L.staleNote('2026-11-12', '2026-11-14').startsWith('Data from 2026-11-12, '), L.staleNote('2026-11-12', '2026-11-14'));
+
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
