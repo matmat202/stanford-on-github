@@ -51,6 +51,29 @@ eq('every word must match', names(L.filterRepos(repos, kinds, { q: 'python lectu
   const isr = new Map([['a/bot', mk('a/bot', 9, '', '', '2026-10-20', 'a', 'A robot arm')]]);
   eq('issues search takes plurals too', L.filterIssues([['a/bot', 1, 'Fix arm', [], '', '2026-10-20', 0]], isr, kinds, { q: 'robots', fetched: F }).map((i) => i[0]), ['a/bot']);
 }
+{ // Word forms: a search word finds its other forms through a root, as a whole word only.
+  const wf = [mk('a/p1', 9, 'Python', '', '', 'a', 'A dependency parsing toolkit'), mk('a/p2', 8, 'C', '', '', 'a', 'Parse logs fast'),
+    mk('a/sp', 7, 'C', '', '', 'a', 'Sparse matrix comparison'), mk('a/pl', 6, 'Python', '', '', 'a', 'Motion planning for arms'),
+    mk('a/ae', 5, 'C', '', '', 'a', 'Plane geometry'), mk('a/op', 4, 'Julia', '', '', 'a', 'Convex optimization'),
+    mk('a/gn', 3, 'Python', '', '', 'a', 'Text generator'), mk('a/gl', 2, 'Python', '', '', 'a', 'General purpose tools'),
+    mk('a/rt', 1, 'Python', '', '', 'a', 'Dense retrieval'), mk('a/vi', 1, 'Python', '', '', 'a', 'Visit counter'),
+    mk('a/ct', 1, 'C++', '', '', 'a', 'Robot controller')];
+  const q = (s) => names(L.filterRepos(wf, kinds, { q: s, fetched: F }));
+  eq('"parser" finds parsing and parse', q('parser'), ['a/p1', 'a/p2']);
+  eq('a root matches only at the start of a word ("sparse", "comparison" are not "pars")', q('parsers'), ['a/p1', 'a/p2']);
+  eq('"planner" finds planning through the undone double', q('planner'), ['a/pl']);
+  eq('an undone double does not take the -e ending ("plane")', q('planned'), ['a/pl']);
+  eq('"optimizer" finds optimization', q('optimizer'), ['a/op']);
+  eq('"generation" finds generator but not general', q('generation'), ['a/gn']);
+  eq('"retriever" finds retrieval', q('retriever'), ['a/rt']);
+  eq('"controlled" finds controller', q('controlled'), ['a/ct']);
+  eq('roots under four letters are not used ("vision" is not "vis")', q('vision'), []);
+  eq('a word with no ending to cut still matches anywhere', q('gener'), ['a/gn', 'a/gl']);
+  eq('roots', ['parser', 'planning', 'optimization', 'generation', 'vision', 'user', 'model', 'c++er'].map(L.root),
+     ['pars', 'plan', 'optim', 'generat', '', '', '', '']);
+  const isr = new Map([['a/pl', wf[3]]]);
+  eq('issues search takes word forms too', L.filterIssues([['a/pl', 1, 'Fix arm', [], '', '2026-10-20', 0]], isr, kinds, { q: 'planner', quiet: true, fetched: F }).map((i) => i[0]), ['a/pl']);
+}
 { // The group's display name is searchable, for repos and for issues.
   const on = new Map([['a', 'Intelligent Systems Lab'], ['c', 'Convex Group']]);
   eq('search reaches the org display name', names(L.filterRepos(repos, kinds, { q: 'intelligent systems', fetched: F, orgName: on })), ['a/dspy', 'a/zeta']);

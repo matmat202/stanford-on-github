@@ -30,7 +30,37 @@ export function stem(w) {
   if (w.length >= 4 && w.endsWith('s') && !/(ss|us|is)$/.test(w)) return w.slice(0, -1);
   return w;
 }
-const terms = (q) => fold(q).split(/\s+/).filter(Boolean).map(stem);
+
+// A search word also finds its other forms: "planner" read 0 repos where "planning" read 24,
+// "optimizer" 7 where "optimization" read 55, "retriever" 0 where "retrieval" read 8 (shipped
+// data, 2026-11-21). The word is cut to a root ("parser" -> "pars", "optimization" -> "optim")
+// and the root then matches only as the start of a whole word followed by one of the endings
+// in TAIL, so "pars" finds "parse", "parsing" and "parsers" but not "sparse" or "comparison".
+// -ion is cut before -ation ("generation" -> "generat"), or "general" would match. Roots under
+// four letters are not used ("vision" -> "vis", "user" -> "us"). This only ever adds matches:
+// the word itself still matches anywhere, as before.
+const CUT = /(ization|isation|ion|ing|er|or|ed|ize|ise|e)$/;
+const TAIL = '(?:iz|is)?(?:at)?(?:ion|or|ing|er|ed|al|e)?s?';
+// [root, doubled]: doubled when the cut left a doubled consonant, undone ("planning" -> "plan").
+function cut(w) {
+  const m = /^[a-z0-9]+$/.test(w) && w.match(CUT);
+  if (!m) return ['', false];
+  const r = w.slice(0, -m[1].length);
+  const dbl = /([b-df-hj-np-tv-z])\1$/.test(r);
+  const out = dbl ? r.slice(0, -1) : r;
+  return out.length >= 4 ? [out, dbl] : ['', false];
+}
+export const root = (w) => cut(w)[0];
+// After an undone double only the endings that double are allowed, or "planner" -> "plan"
+// would take "plane" (7 repos) through the -e ending.
+function matcher(w) {
+  const [r, dbl] = cut(w);
+  if (!r) return (hay) => hay.includes(w);
+  const tail = dbl ? `(?:${r.slice(-1)}?(?:ing|er|ed))?s?` : TAIL;
+  const re = new RegExp(`(?<![a-z0-9])${r}${tail}(?![a-z0-9])`);
+  return (hay) => hay.includes(w) || re.test(hay);
+}
+const terms = (q) => fold(q).split(/\s+/).filter(Boolean).map(stem).map(matcher);
 
 // What tapping a topic tag searches for. Only 465 of 2,400 repos carry topics, so an
 // exact-topic filter would be the narrow answer ('nlp': 12 tagged, 130 by search); the
@@ -48,7 +78,7 @@ export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q 
     if (sort === 'new' && !isNew(r, fetched)) return false;
     if (!words.length) return true;
     const hay = fold(`${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]} ${orgName?.get(r[R.ORG]) ?? ''}`);
-    return words.every((w) => hay.includes(w));
+    return words.every((m) => m(hay));
   });
 }
 
@@ -77,7 +107,7 @@ export function filterIssues(issues, repoBy, orgKind, { kind = '', lang = '', or
     if (org && r[R.ORG] !== org) return false;
     if (!words.length) return true;
     const hay = fold(`${i[I.TITLE]} ${i[I.LABELS].join(' ')} ${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]} ${orgName?.get(r[R.ORG]) ?? ''}`);
-    return words.every((w) => hay.includes(w));
+    return words.every((m) => m(hay));
   });
 }
 
