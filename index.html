@@ -56,6 +56,7 @@ ol.repos li{background:var(--card);border:1px solid var(--line);border-radius:10
 .d{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.45;overflow-wrap:anywhere}
 .m{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:12px;color:var(--ink-3);align-items:center}
 .m .s{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.m .gain{color:var(--accent)}
 .m button{font:inherit;font-size:12px;border:0;background:none;color:var(--accent);padding:0;cursor:pointer;text-decoration:underline;min-height:24px}
 .tag{background:var(--chip);border-radius:6px;padding:1px 6px;color:var(--ink-2)}
 .m button.tag{text-decoration:none;background:var(--chip);color:var(--ink-2);padding:0 8px;min-height:24px;display:inline-flex;align-items:center}
@@ -100,7 +101,7 @@ input,select,textarea{font-size:16px!important}
     <div class="q"><label class="v" for="q">Search</label><input id="q" type="search" autocomplete="off" placeholder="Search: llm, robotics, genomics…"></div>
     <div><label class="v" for="lang">Language</label><select id="lang"></select></div>
     <div id="sortWrap"><label class="v" for="sort">Sort</label><select id="sort">
-      <option value="stars">Most stars</option><option value="new">New this year</option><option value="active">Recently pushed</option>
+      <option value="stars">Most stars</option><option value="rising" id="risingOpt">Rising</option><option value="new">New this year</option><option value="active">Recently pushed</option>
     </select></div>
   </div>
   <label class="quiet" id="quietRow" hidden><input type="checkbox" id="quiet"> Include repos nobody has pushed to in six months</label>
@@ -117,7 +118,8 @@ input,select,textarea{font-size:16px!important}
     says Stanford (in its name, description, website, email or location), plus one lab added by hand because its profile
     doesn't: tatsu-lab, Tatsunori Hashimoto's group, home of Stanford Alpaca. That is self-description, not
     verification, and code that Stanford people publish under personal accounts is not here. Forks are left out, as are
-    repos under 3 stars. "Good first issues" are open issues labelled good first issue or help wanted, fetched
+    repos under 3 stars. "Rising" is stars gained between two of these fetches, about a month apart (the
+    dates are in the count above the list); a repo first seen in the later one counts only if it was created in between. "Good first issues" are open issues labelled good first issue or help wanted, fetched
     <span id="ifetched"></span>, in the repos listed here, leaving out any already assigned to someone; check the issue
     itself before starting, since it may have been picked up since. "Course" and "club" are read from each profile's wording and can be wrong. Built by Claude for
     <a href="https://matmat202.github.io/">matmat202</a>. Not affiliated with Stanford University or GitHub.</footer>

@@ -265,5 +265,43 @@ eq('staleNote is silent on the snapshot day and the day after',
 ok('staleNote speaks once the snapshot is two days old',
    L.staleNote('2026-11-12', '2026-11-14').startsWith('Data from 2026-11-12, '), L.staleNote('2026-11-12', '2026-11-14'));
 
+// --- Rising: stars gained since an earlier fetch (added 2026-11-22) ---------------------
+{
+  const g = (name, stars, gain) => [...mk(name, stars, 'Python', '2020-01-01', '2026-10-01', 'a'), gain];
+  // misordered on purpose, and name order is not star order among the ties; three ties on gain (broken by stars, then by name) and one unknown
+  const rs = [g('a/small', 50, 5), g('c/tie', 2000, 40), g('a/unknown', 99999, null), g('b/top', 100, 300),
+    g('b/tie', 900, 40), g('a/tie', 900, 40), g('a/lost', 70, -3)];
+  eq('rising: gain desc, then stars, then name', names(L.sortRepos(L.filterRepos(rs, kinds, { sort: 'rising', fetched: F }), 'rising')),
+    ['b/top', 'c/tie', 'a/tie', 'b/tie', 'a/small', 'a/lost']);
+  ok('rising leaves out a repo whose gain is unknown', !L.filterRepos(rs, kinds, { sort: 'rising', fetched: F }).some((r) => r[0] === 'a/unknown'));
+  ok('other sorts keep it', L.filterRepos(rs, kinds, { sort: 'stars', fetched: F }).length === rs.length);
+  eq('fmtGain', [L.fmtGain(1234), L.fmtGain(37), L.fmtGain(0), L.fmtGain(-4), L.fmtGain(null)], ['+1.2k', '+37', '0', '−4', '']);
+  eq('rising round-trips the url', L.decodeState(L.encodeState({ sort: 'rising' }), { langs: new Set(), orgs: new Set() }).sort, 'rising');
+}
+{ // The shipped gains, recomputed from the snapshot history build.py read.
+  let hist = null;
+  try { hist = JSON.parse(readFileSync(here + '../data/stars.history.json', 'utf8')); } catch { /* staged copy: no history */ }
+  const days = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+  ok('every row has a gain column', D.repos.every((r) => r.length === 11 && (r[L.R.GAIN] === null || Number.isInteger(r[L.R.GAIN]))));
+  if (hist) {
+    ok('history holds this fetch', D.fetched in hist);
+    const back = Object.keys(hist).filter((d) => days(d, D.fetched) >= 7);
+    const want = back.sort((a, b) => Math.abs(days(a, D.fetched) - 30) - Math.abs(days(b, D.fetched) - 30) || (a < b ? -1 : 1))[0] ?? null;
+    eq('gains are measured from the fetch nearest a month back, at least a week', D.gain_since, want);
+  }
+  if (hist && D.gain_since) {
+    const base = hist[D.gain_since];
+    const off = D.repos.filter((r) => { const b = base[r[0].toLowerCase()];
+      const exp = b !== undefined ? r[L.R.STARS] - b : r[L.R.CREATED] > D.gain_since ? r[L.R.STARS] : null;
+      return exp !== r[L.R.GAIN]; });
+    eq('every shipped gain is stars now minus stars then', off.map((r) => `${r[0]} ${r[L.R.GAIN]}`).slice(0, 5), []);
+    const known = D.repos.filter((r) => r[L.R.GAIN] !== null);
+    ok('most repos have a known gain (positive control)', known.length > D.repos.length * 0.9, `${known.length}/${D.repos.length}`);
+    ok('the rising view is not empty and its top gained stars', (L.sortRepos(L.filterRepos(D.repos, orgKind, { sort: 'rising', fetched: D.fetched }), 'rising')[0] ?? [])[L.R.GAIN] > 0);
+    ok('shipped: rising is gain, then stars, then name, pair by pair', ordered(L.sortRepos(known, 'rising'),
+      [(a, b) => b[L.R.GAIN] - a[L.R.GAIN], (a, b) => b[L.R.STARS] - a[L.R.STARS], (a, b) => cmp(a[0].toLowerCase(), b[0].toLowerCase())]));
+  }
+}
+
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

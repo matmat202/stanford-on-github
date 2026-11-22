@@ -1,14 +1,15 @@
 /* Pure logic for Stanford on GitHub: filters, sorts, the "new this year" window, URL
  * state. No DOM; tested by site/sog-logic.test.mjs. A repo is the array build.py writes:
- *   [full_name, description, stars, forks, language, created, pushed, archived, topics, org]
+ *   [full_name, description, stars, forks, language, created, pushed, archived, topics, org, gain]
+ * gain is stars gained since the data's gain_since fetch, or null where that is unknown.
  */
-export const R = { NAME: 0, DESC: 1, STARS: 2, FORKS: 3, LANG: 4, CREATED: 5, PUSHED: 6, ARCHIVED: 7, TOPICS: 8, ORG: 9 };
+export const R = { NAME: 0, DESC: 1, STARS: 2, FORKS: 3, LANG: 4, CREATED: 5, PUSHED: 6, ARCHIVED: 7, TOPICS: 8, ORG: 9, GAIN: 10 };
 // An open first issue, as build.py writes it (unassigned, in a listed, unarchived repo):
 //   [repo full_name, number, title, labels, created, updated, comments]
 export const I = { REPO: 0, NUM: 1, TITLE: 2, LABELS: 3, CREATED: 4, UPDATED: 5, COMMENTS: 6 };
 export const KINDS = ['', 'lab', 'course', 'club'];
 export const VIEWS = ['repos', 'issues'];
-export const SORTS = ['stars', 'new', 'active'];
+export const SORTS = ['stars', 'rising', 'new', 'active'];
 
 export const fold = (s) => String(s ?? '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
 
@@ -76,6 +77,9 @@ export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q 
     if (lang && r[R.LANG] !== lang) return false;
     if (org && r[R.ORG] !== org) return false;
     if (sort === 'new' && !isNew(r, fetched)) return false;
+    // A repo whose earlier count is unknown cannot be ranked by gain, so it is left out
+    // rather than sorted to the bottom, where it would read as "gained nothing".
+    if (sort === 'rising' && !Number.isFinite(r[R.GAIN])) return false;
     if (!words.length) return true;
     const hay = fold(`${r[R.NAME]} ${r[R.DESC]} ${r[R.TOPICS].join(' ')} ${r[R.LANG]} ${orgName?.get(r[R.ORG]) ?? ''}`);
     return words.every((m) => m(hay));
@@ -86,6 +90,7 @@ export function filterRepos(repos, orgKind, { kind = '', lang = '', org = '', q 
 export function sortRepos(list, sort = 'stars') {
   const byName = (a, b) => (a[R.NAME].toLowerCase() < b[R.NAME].toLowerCase() ? -1 : 1);
   const out = [...list];
+  if (sort === 'rising') return out.sort((a, b) => (b[R.GAIN] ?? -Infinity) - (a[R.GAIN] ?? -Infinity) || b[R.STARS] - a[R.STARS] || byName(a, b));
   if (sort === 'active') return out.sort((a, b) => (a[R.PUSHED] < b[R.PUSHED] ? 1 : a[R.PUSHED] > b[R.PUSHED] ? -1 : 0) || b[R.STARS] - a[R.STARS] || byName(a, b));
   return out.sort((a, b) => b[R.STARS] - a[R.STARS] || byName(a, b));
 }
@@ -116,6 +121,13 @@ export function sortIssues(list) {
   return [...list].sort((a, b) => (a[I.UPDATED] < b[I.UPDATED] ? 1 : a[I.UPDATED] > b[I.UPDATED] ? -1 : 0)
     || (a[I.REPO].toLowerCase() < b[I.REPO].toLowerCase() ? -1 : a[I.REPO].toLowerCase() > b[I.REPO].toLowerCase() ? 1 : 0)
     || b[I.NUM] - a[I.NUM]);
+}
+
+// "+1.2k", "+37", "0", "−4": a gain as a row shows it.
+export function fmtGain(n) {
+  if (!Number.isFinite(n)) return '';
+  if (n < 0) return `\u2212${fmtStars(-n)}`;
+  return n ? `+${fmtStars(n)}` : '0';
 }
 
 export function fmtStars(n) {

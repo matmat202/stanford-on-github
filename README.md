@@ -5,7 +5,8 @@
 Every public repo from the GitHub organisations of Stanford's labs, courses and student
 groups, ranked by stars: DSPy, STORM, Stanford Alpaca, CoreNLP, Stanza, GloVe, ColBERT,
 ThunderKittens, HELM, OGB, and about 2,300 more. Filter to labs, courses or clubs, pick a
-language, see what was created in the last year or pushed most recently, and click any
+language, see what gained the most stars in the last month, what was created in the last
+year or pushed most recently, and click any
 group to see everything it has published.
 
 **Good first issues** lists the open issues labelled *good first issue* or *help wanted*

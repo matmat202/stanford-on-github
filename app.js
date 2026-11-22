@@ -1,4 +1,4 @@
-import { R, I, topicQuery, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, ago, asOf, staleNote, isNew, encodeState, decodeState } from './sog-logic.js';
+import { R, I, topicQuery, filterRepos, sortRepos, filterIssues, sortIssues, isQuiet, fmtStars, fmtGain, ago, asOf, staleNote, isNew, encodeState, decodeState } from './sog-logic.js';
 
 const $ = (id) => document.getElementById(id);
 const PAGE = 50;
@@ -27,6 +27,11 @@ function row(r, i) {
   const s = document.createElement('span'); s.className = 's'; s.textContent = `★ ${fmtStars(r[R.STARS])}`;
   s.title = `${fmt(r[R.STARS])} stars`;
   m.append(s);
+  if (state.sort === 'rising') {
+    const g = document.createElement('span'); g.className = 's gain'; g.textContent = `${fmtGain(r[R.GAIN])} stars`;
+    g.title = `${fmt(r[R.GAIN])} stars gained between ${D.gain_since} and ${D.fetched}`;
+    m.append(g);
+  }
   if (r[R.LANG]) { const l = document.createElement('span'); l.textContent = r[R.LANG]; m.append(l); }
   const p = document.createElement('span');
   p.textContent = state.sort === 'new' ? `created ${ago(r[R.CREATED], asOf(D.fetched, TODAY))}` : `pushed ${ago(r[R.PUSHED], asOf(D.fetched, TODAY))}`;
@@ -88,6 +93,7 @@ function draw() {
   if (state.kind) bits.push(KIND_LABEL[state.kind].toLowerCase());
   if (state.lang) bits.push(state.lang);
   if (!issues && state.sort === 'new') bits.push(`created in the year to ${D.fetched}`);
+  if (!issues && state.sort === 'rising') bits.push(`by stars gained from ${D.gain_since} to ${D.fetched}`);
   if (issues) bits.push(state.quiet ? 'including quiet repos' : 'active repos only');
   $('status').textContent = bits.join(' · ');
   const slot = $('orgSlot');
@@ -172,6 +178,8 @@ async function main() {
   const lang = $('lang');
   lang.append(new Option('Any language', ''), ...D.languages.slice(0, 30).map((l) => new Option(l, l)));
   Object.assign(state, decodeState(location.search, { langs: new Set(D.languages.slice(0, 30)), orgs: new Set(orgKind.keys()) }));
+  // With no earlier fetch far enough back there is nothing to rank a gain by.
+  if (!D.gain_since) { $('risingOpt').remove(); if (state.sort === 'rising') state.sort = 'stars'; }
   drawTable(); sync(); draw();
   lang.addEventListener('change', () => set({ lang: lang.value }));
   $('sort').addEventListener('change', () => set({ sort: $('sort').value }));
