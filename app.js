@@ -3,6 +3,8 @@ import { R, I, topicQuery, filterRepos, sortRepos, filterIssues, sortIssues, isQ
 const $ = (id) => document.getElementById(id);
 const PAGE = 50;
 const KIND_LABEL = { '': 'Everything', lab: 'Labs & research', course: 'Courses', club: 'Clubs & students' };
+// The group table's Kind column: the long labels pushed Stars, the column it is ranked by, off a phone's screen.
+const KIND_SHORT = { lab: 'Lab', course: 'Course', club: 'Club' };
 let D = null;
 let orgKind = new Map();
 let orgName = new Map();
@@ -145,7 +147,7 @@ function drawTable() {
     const b = document.createElement('button'); b.type = 'button'; b.dataset.org = o.login; b.textContent = o.name;
     g.append(b);
     if (o.name.toLowerCase() !== o.login.toLowerCase()) g.append(` (${o.login})`);
-    const k = document.createElement('td'); k.textContent = KIND_LABEL[o.kind];
+    const k = document.createElement('td'); k.textContent = KIND_SHORT[o.kind];
     const n = document.createElement('td'); n.className = 'r'; n.textContent = fmt(o.repos);
     const s = document.createElement('td'); s.className = 'r'; s.textContent = fmt(o.stars);
     tr.append(g, k, n, s); t.append(tr);
